@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>战略计划仪表盘</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.2/dist/av-min.js"></script>
+    <style>
+        :root {
+            --primary-color: #000000;
+            --secondary-color: #f5f5f5;
+            --accent-color: #333333;
+            --text-color: #000000;
+            --background-color: #ffffff;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        h1, h2, h3 {
+            font-weight: 300;
+            letter-spacing: -0.5px;
+        }
+        
+        .btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: var(--accent-color);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+        }
+        
+        .btn-outline:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: var(--card-shadow);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 300;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .chart-card {
+            height: 300px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border-radius: 8px;
+            padding: 30px;
+            position: relative;
+        }
+        
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
+        
+        .auth-container {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: var(--primary-color);
+            transition: width 0.5s ease;
+        }
+        
+        .comparison {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 5px;
+            font-size: 0.8rem;
+        }
+        
+        .target {
+            color: #666;
+        }
+        
+        .actual {
+            font-weight: bold;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .positive {
+            color: #000;
+        }
+        
+        .negative {
+            color: #ff3b30;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 20px;
+        }
+        
+        .nav-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .nav-tab.active {
+            border-bottom: 2px solid var(--primary-color);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- 登录/注册页面 -->
+    <div id="auth-page" class="auth-container card">
+        <h2 style="text-align: center; margin-bottom: 30px;">战略仪表盘登录</h2>
+        <div class="form-group">
+            <label for="auth-username">用户名</label>
+            <input type="text" id="auth-username" placeholder="请输入用户名">
+        </div>
+        <div class="form-group">
+            <label for="auth-password">密码</label>
+            <input type="password" id="auth-password" placeholder="请输入密码">
+        </div>
+        <button id="login-btn" class="btn" style="width: 100%; margin-bottom: 15px;">登录</button>
+        <button id="register-btn" class="btn btn-outline" style="width: 100%;">注册新账户</button>
+    </div>
+
+    <!-- 主仪表盘页面 -->
+    <div id="dashboard-page" class="container hidden">
+        <header>
+            <h1>战略计划仪表盘</h1>
+            <div>
+                <button id="settings-btn" class="btn btn-outline">设置目标</button>
+                <button id="data-maintenance-btn" class="btn btn-outline">数据维护</button>
+                <button id="strategy-map-btn" class="btn">战略地图</button>
+                <button id="logout-btn" class="btn btn-outline" style="margin-left: 10px;">退出</button>
+            </div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="card stat-card">
+                <div class="stat-label">总业绩完成度</div>
+                <div class="stat-value" id="completion-rate">0%</div>
+                <div class="progress-bar">
+                    <div id="completion-progress" class="progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="comparison">
+                    <span class="target">目标: <span id="target-performance">0</span></span>
+                    <span class="actual">实际: <span id="actual-performance">0</span></span>
+                </div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">实际总单量</div>
+                <div class="stat-value" id="total-orders">0</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">实际平均转化率</div>
+                <div class="stat-value" id="avg-conversion-rate">0%</div>
+                <div class="comparison">
+                    <span class="target">目标: <span id="target-conversion">0%</span></span>
+                </div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">实际毛利率</div>
+                <div class="stat-value" id="avg-gross-margin">0%</div>
+                <div class="comparison">
+                    <span class="target">目标: <span id="target-margin">0%</span></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-container">
+            <div class="card chart-card">
+                <h3>月度业绩趋势</h3>
+                <canvas id="performance-chart"></canvas>
+            </div>
+            <div class="card chart-card">
+                <h3>目标vs实际对比</h3>
+                <canvas id="comparison-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置目标模态框 -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-settings">&times;</span>
+            <h2>设置目标参数</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="unit-price">客单价 (元)</label>
+                    <input type="number" id="unit-price" placeholder="例如: 300000">
+                </div>
+                <div class="form-group">
+                    <label for="conversion-rate">转化率 (%)</label>
+                    <input type="number" id="conversion-rate" placeholder="例如: 22" min="0" max="100">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="visit-rate">到店率 (%)</label>
+                    <input type="number" id="visit-rate" placeholder="例如: 40" min="0" max="100">
+                </div>
+                <div class="form-group">
+                    <label for="gross-margin">毛利率 (%)</label>
+                    <input type="number" id="gross-margin" placeholder="例如: 35" min="0" max="100">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="annual-target">年度业绩目标 (万元)</label>
+                <input type="number" id="annual-target" placeholder="例如: 1200">
+            </div>
+            <button id="save-settings" class="btn">保存目标</button>
+        </div>
+    </div>
+
+    <!-- 数据维护模态框 -->
+    <div id="data-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-data">&times;</span>
+            <h2>数据维护</h2>
+            <p>请输入实际业务数据</p>
+            
+            <div class="nav-tabs">
+                <div class="nav-tab active" data-tab="weekly">周度数据</div>
+                <div class="nav-tab" data-tab="monthly">月度汇总</div>
+            </div>
+            
+            <div id="weekly-tab" class="tab-content active">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="week-select">选择周次</label>
+                        <select id="week-select">
+                            <!-- 周次选项将通过JS动态生成 -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="actual-measurements">实际量房数</label>
+                        <input type="number" id="actual-measurements" placeholder="输入实际量房数量">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="actual-visits">实际到店数</label>
+                        <input type="number" id="actual-visits" placeholder="输入实际到店数量">
+                    </div>
+                    <div class="form-group">
+                        <label for="actual-signings">实际签约数</label>
+                        <input type="number" id="actual-signings" placeholder="输入实际签约数量">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="actual-output">实际产值 (万元)</label>
+                        <input type="number" id="actual-output" placeholder="输入实际产值">
+                    </div>
+                    <div class="form-group">
+                        <label for="actual-gross-profit">实际毛利 (万元)</label>
+                        <input type="number" id="actual-gross-profit" placeholder="输入实际毛利">
+                    </div>
+                </div>
+            </div>
+            
+            <div id="monthly-tab" class="tab-content">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>月份</th>
+                            <th>目标产值</th>
+                            <th>实际产值</th>
+                            <th>完成率</th>
+                            <th>实际单量</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monthly-data">
+                        <!-- 月度数据将通过JS动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <button id="save-data" class="btn">保存数据</button>
+        </div>
+    </div>
+
+    <!-- 战略地图模态框 -->
+    <div id="strategy-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-strategy">&times;</span>
+            <h2>战略地图</h2>
+            <div class="card">
+                <h3>年度战略规划</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>季度</th>
+                            <th>目标产值 (万元)</th>
+                            <th>目标单量</th>
+                            <th>重点任务</th>
+                            <th>负责人</th>
+                            <th>进度</th>
+                        </tr>
+                    </thead>
+                    <tbody id="strategy-data">
+                        <!-- 战略数据将通过JS动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="card">
+                <h3>关键指标追踪</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">所需总客资</div>
+                        <div class="stat-value" id="total-leads">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">所需总到店</div>
+                        <div class="stat-value" id="total-visits">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">所需总签约</div>
+                        <div class="stat-value" id="total-signings">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">剩余时间 (天)</div>
+                        <div class="stat-value" id="days-left">365</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // LeanCloud 初始化
+        AV.init({
+            appId: 'rJZZGZjMo77XllnTKXgG3rPl-gzGzoHsz',  // 需替换为您的App ID
+            appKey: 'y555qZw0RhNhKSQSzcrx0cMd', // 需替换为您的App Key
+            serverURL: 'https://rjzzgzjm.lc-cn-n1-shared.com' // 需替换为您的Server URL
+        });
+
+        // 全局变量
+        let currentUser = null;
+        let targetData = {};
+        let actualData = {};
+        let weeklyData = {};
+
+        // DOM 加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查用户是否已登录
+            checkLoginStatus();
+            
+            // 初始化事件监听器
+            initEventListeners();
+            
+            // 初始化周次选择
+            initWeekSelector();
+        });
+
+        // 检查登录状态
+        function checkLoginStatus() {
+            currentUser = AV.User.current();
+            if (currentUser) {
+                showDashboard();
+                loadUserData();
+            } else {
+                showAuthPage();
+            }
+        }
+
+        // 显示认证页面
+        function showAuthPage() {
+            document.getElementById('auth-page').classList.remove('hidden');
+            document.getElementById('dashboard-page').classList.add('hidden');
+        }
+
+        // 显示仪表盘
+        function showDashboard() {
+            document.getElementById('auth-page').classList.add('hidden');
+            document.getElementById('dashboard-page').classList.remove('hidden');
+        }
+
+        // 初始化事件监听器
+        function initEventListeners() {
+            // 认证相关
+            document.getElementById('login-btn').addEventListener('click', login);
+            document.getElementById('register-btn').addEventListener('click', register);
+            document.getElementById('logout-btn').addEventListener('click', logout);
+            
+            // 模态框相关
+            document.getElementById('settings-btn').addEventListener('click', () => {
+                document.getElementById('settings-modal').style.display = 'flex';
+            });
+            
+            document.getElementById('data-maintenance-btn').addEventListener('click', () => {
+                document.getElementById('data-modal').style.display = 'flex';
+            });
+            
+            document.getElementById('strategy-map-btn').addEventListener('click', () => {
+                document.getElementById('strategy-modal').style.display = 'flex';
+                updateStrategyMap();
+            });
+            
+            // 关闭模态框
+            document.getElementById('close-settings').addEventListener('click', () => {
+                document.getElementById('settings-modal').style.display = 'none';
+            });
+            
+            document.getElementById('close-data').addEventListener('click', () => {
+                document.getElementById('data-modal').style.display = 'none';
+            });
+            
+            document.getElementById('close-strategy').addEventListener('click', () => {
+                document.getElementById('strategy-modal').style.display = 'none';
+            });
+            
+            // 保存数据
+            document.getElementById('save-settings').addEventListener('click', saveTargetData);
+            document.getElementById('save-data').addEventListener('click', saveActualData);
+            
+            // 标签页切换
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // 移除所有active类
+                    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // 添加active类到当前标签
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab') + '-tab';
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+        }
+
+        // 初始化周次选择器
+        function initWeekSelector() {
+            const weekSelect = document.getElementById('week-select');
+            for (let i = 1; i <= 52; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `第${i}周`;
+                weekSelect.appendChild(option);
+            }
+        }
+
+        // 用户登录
+        function login() {
+            const username = document.getElementById('auth-username').value;
+            const password = document.getElementById('auth-password').value;
+            
+            AV.User.logIn(username, password).then(function(user) {
+                currentUser = user;
+                showDashboard();
+                loadUserData();
+            }).catch(function(error) {
+                alert('登录失败: ' + error.message);
+            });
+        }
+
+        // 用户注册
+        function register() {
+            const username = document.getElementById('auth-username').value;
+            const password = document.getElementById('auth-password').value;
+            
+            const user = new AV.User();
+            user.setUsername(username);
+            user.setPassword(password);
+            
+            user.signUp().then(function(user) {
+                currentUser = user;
+                showDashboard();
+                // 初始化默认目标数据
+                initDefaultTargetData();
+            }).catch(function(error) {
+                alert('注册失败: ' + error.message);
+            });
+        }
+
+        // 用户退出
+        function logout() {
+            AV.User.logOut();
+            currentUser = null;
+            showAuthPage();
+        }
+
+        // 初始化默认目标数据
+        function initDefaultTargetData() {
+            targetData = {
+                unitPrice: 300000,
+                conversionRate: 22,
+                visitRate: 40,
+                grossMargin: 35,
+                annualTarget: 12000000
+            };
+            saveTargetData();
+        }
+
+        // 保存目标数据到LeanCloud
+        function saveTargetData() {
+            if (!currentUser) return;
+            
+            const StrategyData = AV.Object.extend('StrategyData');
+            const query = new AV.Query('StrategyData');
+            query.equalTo('user', currentUser);
+            query.equalTo('dataType', 'target');
+            
+            query.first().then(function(data) {
+                if (data) {
+                    // 更新现有数据
+                    return data;
+                } else {
+                    // 创建新数据
+                    const newData = new StrategyData();
+                    newData.set('user', currentUser);
+                    newData.set('dataType', 'target');
+                    return newData;
+                }
+            }).then(function(data) {
+                data.set('unitPrice', parseInt(document.getElementById('unit-price').value) || 0);
+                data.set('conversionRate', parseInt(document.getElementById('conversion-rate').value) || 0);
+                data.set('visitRate', parseInt(document.getElementById('visit-rate').value) || 0);
+                data.set('grossMargin', parseInt(document.getElementById('gross-margin').value) || 0);
+                data.set('annualTarget', parseInt(document.getElementById('annual-target').value) * 10000 || 0);
+                
+                return data.save();
+            }).then(function() {
+                alert('目标数据保存成功！');
+                document.getElementById('settings-modal').style.display = 'none';
+                loadUserData();
+            }).catch(function(error) {
+                alert('保存失败: ' + error.message);
+            });
+        }
+
+        // 保存实际数据到LeanCloud
+        function saveActualData() {
+            if (!currentUser) return;
+            
+            const week = parseInt(document.getElementById('week-select').value);
+            const StrategyData = AV.Object.extend('StrategyData');
+            const query = new AV.Query('StrategyData');
+            query.equalTo('user', currentUser);
+            query.equalTo('dataType', 'actual');
+            query.equalTo('week', week);
+            
+            query.first().then(function(data) {
+                if (data) {
+                    // 更新现有数据
+                    return data;
+                } else {
+                    // 创建新数据
+                    const newData = new StrategyData();
+                    newData.set('user', currentUser);
+                    newData.set('dataType', 'actual');
+                    newData.set('week', week);
+                    return newData;
+                }
+            }).then(function(data) {
+                data.set('measurements', parseInt(document.getElementById('actual-measurements').value) || 0);
+                data.set('visits', parseInt(document.getElementById('actual-visits').value) || 0);
+                data.set('signings', parseInt(document.getElementById('actual-signings').value) || 0);
+                data.set('outputValue', parseInt(document.getElementById('actual-output').value) * 10000 || 0);
+                data.set('grossProfit', parseInt(document.getElementById('actual-gross-profit').value) * 10000 || 0);
+                
+                return data.save();
+            }).then(function() {
+                alert('实际数据保存成功！');
+                document.getElementById('data-modal').style.display = 'none';
+                loadUserData();
+            }).catch(function(error) {
+                alert('保存失败: ' + error.message);
+            });
+        }
+
+        // 从LeanCloud加载用户数据
+        function loadUserData() {
+            if (!currentUser) return;
+            
+            // 加载目标数据
+            const targetQuery = new AV.Query('StrategyData');
+            targetQuery.equalTo('user', currentUser);
+            targetQuery.equalTo('dataType', 'target');
+            
+            targetQuery.first().then(function(data) {
+                if (data) {
+                    targetData = {
+                        unitPrice: data.get('unitPrice') || 0,
+                        conversionRate: data.get('conversionRate') || 0,
+                        visitRate: data.get('visitRate') || 0,
+                        grossMargin: data.get('grossMargin') || 0,
+                        annualTarget: data.get('annualTarget') || 0
+                    };
+                    
+                    // 更新设置表单
+                    document.getElementById('unit-price').value = targetData.unitPrice;
+                    document.getElementById('conversion-rate').value = targetData.conversionRate;
+                    document.getElementById('visit-rate').value = targetData.visitRate;
+                    document.getElementById('gross-margin').value = targetData.grossMargin;
+                    document.getElementById('annual-target').value = targetData.annualTarget / 10000;
+                }
+                
+                // 加载实际数据
+                const actualQuery = new AV.Query('StrategyData');
+                actualQuery.equalTo('user', currentUser);
+                actualQuery.equalTo('dataType', 'actual');
+                
+                return actualQuery.find();
+            }).then(function(actualDataList) {
+                weeklyData = {};
+                let totalOutput = 0;
+                let totalSignings = 0;
+                let totalMeasurements = 0;
+                let totalVisits = 0;
+                let totalGrossProfit = 0;
+                
+                actualDataList.forEach(function(data) {
+                    const week = data.get('week');
+                    weeklyData[week] = {
+                        measurements: data.get('measurements') || 0,
+                        visits: data.get('visits') || 0,
+                        signings: data.get('signings') || 0,
+                        outputValue: data.get('outputValue') || 0,
+                        grossProfit: data.get('grossProfit') || 0
+                    };
+                    
+                    totalOutput += weeklyData[week].outputValue;
+                    totalSignings += weeklyData[week].signings;
+                    totalMeasurements += weeklyData[week].measurements;
+                    totalVisits += weeklyData[week].visits;
+                    totalGrossProfit += weeklyData[week].grossProfit;
+                });
+                
+                // 计算实际指标
+                const completionRate = targetData.annualTarget > 0 ? (totalOutput / targetData.annualTarget * 100).toFixed(1) : 0;
+                const avgConversionRate = totalMeasurements > 0 ? (totalSignings / totalMeasurements * 100).toFixed(1) : 0;
+                const actualVisitRate = totalMeasurements > 0 ? (totalVisits / totalMeasurements * 100).toFixed(1) : 0;
+                const avgGrossMargin = totalOutput > 0 ? (totalGrossProfit / totalOutput * 100).toFixed(1) : 0;
+                
+                // 更新仪表盘显示
+                document.getElementById('completion-rate').textContent = completionRate + '%';
+                document.getElementById('completion-progress').style.width = completionRate + '%';
+                document.getElementById('target-performance').textContent = (targetData.annualTarget / 10000).toLocaleString() + '万';
+                document.getElementById('actual-performance').textContent = (totalOutput / 10000).toLocaleString() + '万';
+                
+                document.getElementById('total-orders').textContent = totalSignings;
+                
+                document.getElementById('avg-conversion-rate').textContent = avgConversionRate + '%';
+                document.getElementById('target-conversion').textContent = targetData.conversionRate + '%';
+                
+                document.getElementById('avg-gross-margin').textContent = avgGrossMargin + '%';
+                document.getElementById('target-margin').textContent = targetData.grossMargin + '%';
+                
+                // 更新图表
+                updateCharts();
+                
+            }).catch(function(error) {
+                console.error('加载数据失败: ', error);
+            });
+        }
+
+        // 更新图表
+        function updateCharts() {
+            // 月度业绩趋势图表
+            const performanceCtx = document.getElementById('performance-chart').getContext('2d');
+            
+            // 简化示例数据 - 实际应用中应从weeklyData计算
+            const months = ['1月', '2月', '3月', '4月', '5月', '6月'];
+            const targetDataMonthly = [40, 60, 200, 240, 200, 160]; // 万元
+            const actualDataMonthly = [35, 55, 180, 220, 190, 150]; // 万元
+            
+            new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: '目标业绩',
+                            data: targetDataMonthly,
+                            borderColor: '#000',
+                            backgroundColor: 'transparent',
+                            tension: 0.4
+                        },
+                        {
+                            label: '实际业绩',
+                            data: actualDataMonthly,
+                            borderColor: '#333',
+                            backgroundColor: 'transparent',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '产值 (万元)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 目标vs实际对比图表
+            const comparisonCtx = document.getElementById('comparison-chart').getContext('2d');
+            
+            new Chart(comparisonCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['业绩', '转化率', '到店率', '毛利率'],
+                    datasets: [
+                        {
+                            label: '目标',
+                            data: [
+                                targetData.annualTarget / 10000, 
+                                targetData.conversionRate, 
+                                targetData.visitRate, 
+                                targetData.grossMargin
+                            ],
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)'
+                        },
+                        {
+                            label: '实际',
+                            data: [
+                                // 这里应该使用实际数据，简化处理
+                                targetData.annualTarget / 10000 * 0.75, 
+                                targetData.conversionRate * 0.9, 
+                                targetData.visitRate * 0.85, 
+                                targetData.grossMargin * 0.95
+                            ],
+                            backgroundColor: 'rgba(51, 51, 51, 0.7)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // 更新战略地图
+        function updateStrategyMap() {
+            // 计算所需总数据
+            const requiredSignings = targetData.annualTarget / targetData.unitPrice;
+            const requiredVisits = requiredSignings / (targetData.conversionRate / 100);
+            const requiredLeads = requiredVisits / (targetData.visitRate / 100);
+            
+            // 更新战略地图数据
+            document.getElementById('total-leads').textContent = Math.ceil(requiredLeads);
+            document.getElementById('total-visits').textContent = Math.ceil(requiredVisits);
+            document.getElementById('total-signings').textContent = Math.ceil(requiredSignings);
+            
+            // 计算剩余天数
+            const today = new Date();
+            const endOfYear = new Date(today.getFullYear(), 11, 31);
+            const daysLeft = Math.ceil((endOfYear - today) / (1000 * 60 * 60 * 24));
+            document.getElementById('days-left').textContent = daysLeft;
+            
+            // 更新战略表格
+            const strategyTable = document.getElementById('strategy-data');
+            strategyTable.innerHTML = '';
+            
+            const quarters = [
+                { name: 'Q1', target: 300, signings: 10, tasks: '启动与蓄势', owner: '销售总监' },
+                { name: 'Q2', target: 600, signings: 20, tasks: '巅峰冲刺', owner: '销售总监' },
+                { name: 'Q3', target: 400, signings: 13, tasks: '平稳过渡', owner: '销售经理' },
+                { name: 'Q4', target: 240, signings: 8, tasks: '收官与蓄能', owner: '销售经理' }
+            ];
+            
+            quarters.forEach(q => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${q.name}</td>
+                    <td>${q.target}万</td>
+                    <td>${q.signings}</td>
+                    <td>${q.tasks}</td>
+                    <td>${q.owner}</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${Math.random() * 100}%"></div>
+                        </div>
+                    </td>
+                `;
+                strategyTable.appendChild(row);
+            });
+        }
+    </script>
+</body>
+</html>
