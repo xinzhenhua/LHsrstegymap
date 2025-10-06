@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连宏整装战略管理系统</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leancloud-storage@4.13.2/dist/av-min.js"></script>
+</head>
+<body>
+    <!-- 认证页面 -->
+    <div id="auth-page" class="page active">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <h1>连宏整装战略管理系统</h1>
+                    <p>专业的装修公司业务管理平台</p>
+                </div>
+                
+                <div class="auth-tabs">
+                    <button class="tab-btn active" data-tab="login">登录</button>
+                    <button class="tab-btn" data-tab="register">注册</button>
+                </div>
+                
+                <!-- 登录表单 -->
+                <form id="login-form" class="auth-form active">
+                    <div class="form-group">
+                        <label for="login-username">用户名</label>
+                        <input type="text" id="login-username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">密码</label>
+                        <input type="password" id="login-password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">登录</button>
+                </form>
+                
+                <!-- 注册表单 -->
+                <form id="register-form" class="auth-form">
+                    <div class="form-group">
+                        <label for="register-username">用户名</label>
+                        <input type="text" id="register-username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">邮箱</label>
+                        <input type="email" id="register-email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">密码</label>
+                        <input type="password" id="register-password" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm">确认密码</label>
+                        <input type="password" id="register-confirm" name="confirmPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">注册</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主仪表盘 -->
+    <div id="dashboard-page" class="page">
+        <!-- 头部导航 -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <h2>连宏整装战略管理系统</h2>
+                </div>
+                <nav class="nav">
+                    <button class="nav-btn active" data-page="dashboard">仪表盘</button>
+                    <button class="nav-btn" data-page="data">数据维护</button>
+                    <button class="nav-btn" data-page="strategy">战略地图</button>
+                    <button class="nav-btn" data-page="settings">设置</button>
+                </nav>
+                <div class="user-info">
+                    <span id="current-user"></span>
+                    <button id="logout-btn" class="btn btn-secondary">退出</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 仪表盘内容 -->
+        <main class="main-content">
+            <!-- 仪表盘页面 -->
+            <div id="dashboard-content" class="page-content active">
+                <div class="page-header">
+                    <h1>战略仪表盘</h1>
+                    <p>实时监控业务指标和业绩完成情况</p>
+                </div>
+                
+                <!-- 关键指标卡片 -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3>年度目标完成度</h3>
+                            <span class="metric-value" id="annual-completion">0%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="annual-progress"></div>
+                        </div>
+                        <div class="metric-details">
+                            <span>已完成: <strong id="annual-actual">¥0</strong></span>
+                            <span>目标: <strong id="annual-target">¥0</strong></span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3>转化率</h3>
+                            <span class="metric-value" id="conversion-rate">0%</span>
+                        </div>
+                        <div class="metric-details">
+                            <span>目标: <strong id="conversion-target">0%</strong></span>
+                            <span>实际: <strong id="conversion-actual">0%</strong></span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3>到店率</h3>
+                            <span class="metric-value" id="visit-rate">0%</span>
+                        </div>
+                        <div class="metric-details">
+                            <span>目标: <strong id="visit-target">0%</strong></span>
+                            <span>实际: <strong id="visit-actual">0%</strong></span>
+                        </div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <h3>毛利率</h3>
+                            <span class="metric-value" id="gross-margin">0%</span>
+                        </div>
+                        <div class="metric-details">
+                            <span>目标: <strong id="margin-target">0%</strong></span>
+                            <span>实际: <strong id="margin-actual">0%</strong></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 图表区域 -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>月度业绩趋势</h3>
+                        <canvas id="monthly-trend-chart"></canvas>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <h3>季度目标分解</h3>
+                        <canvas id="quarterly-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据维护页面 -->
+            <div id="data-content" class="page-content">
+                <div class="page-header">
+                    <h1>数据维护</h1>
+                    <p>录入和管理周度、月度业务数据</p>
+                </div>
+                
+                <div class="data-tabs">
+                    <button class="tab-btn active" data-tab="weekly">周度数据</button>
+                    <button class="tab-btn" data-tab="monthly">月度汇总</button>
+                </div>
+                
+                <!-- 周度数据录入 -->
+                <div id="weekly-data" class="data-section active">
+                    <div class="section-header">
+                        <h3>周度数据录入</h3>
+                        <button id="add-weekly-btn" class="btn btn-primary">新增数据</button>
+                    </div>
+                    
+                    <div class="data-form" id="weekly-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="week-number">周次</label>
+                                <input type="number" id="week-number" name="week" min="1" max="52" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="measurements">量房数量</label>
+                                <input type="number" id="measurements" name="measurements" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="visits">到店数量</label>
+                                <input type="number" id="visits" name="visits" min="0" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="signings">签约数量</label>
+                                <input type="number" id="signings" name="signings" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="output-value">产值（万元）</label>
+                                <input type="number" id="output-value" name="outputValue" min="0" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="gross-profit">毛利（万元）</label>
+                                <input type="number" id="gross-profit" name="grossProfit" min="0" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">保存</button>
+                            <button type="button" class="btn btn-secondary" id="cancel-weekly">取消</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table">
+                        <table id="weekly-table">
+                            <thead>
+                                <tr>
+                                    <th>周次</th>
+                                    <th>量房数</th>
+                                    <th>到店数</th>
+                                    <th>签约数</th>
+                                    <th>产值(万)</th>
+                                    <th>毛利(万)</th>
+                                    <th>转化率</th>
+                                    <th>到店率</th>
+                                    <th>毛利率</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 月度汇总 -->
+                <div id="monthly-data" class="data-section">
+                    <div class="section-header">
+                        <h3>月度汇总</h3>
+                    </div>
+                    
+                    <div class="data-table">
+                        <table id="monthly-table">
+                            <thead>
+                                <tr>
+                                    <th>月份</th>
+                                    <th>目标产值</th>
+                                    <th>实际产值</th>
+                                    <th>完成率</th>
+                                    <th>目标毛利</th>
+                                    <th>实际毛利</th>
+                                    <th>毛利率</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 战略地图页面 -->
+            <div id="strategy-content" class="page-content">
+                <div class="page-header">
+                    <h1>战略地图</h1>
+                    <p>年度战略目标分解和进度追踪</p>
+                </div>
+                
+                <div class="strategy-overview">
+                    <div class="strategy-card">
+                        <h3>年度战略目标</h3>
+                        <div class="target-display">
+                            <span class="target-value" id="annual-target-display">¥0</span>
+                            <span class="target-label">年度目标</span>
+                        </div>
+                    </div>
+                    
+                    <div class="strategy-card">
+                        <h3>关键指标要求</h3>
+                        <div class="requirements-grid">
+                            <div class="requirement-item">
+                                <span class="requirement-label">总客资需求</span>
+                                <span class="requirement-value" id="total-leads">0</span>
+                            </div>
+                            <div class="requirement-item">
+                                <span class="requirement-label">总到店需求</span>
+                                <span class="requirement-value" id="total-visits">0</span>
+                            </div>
+                            <div class="requirement-item">
+                                <span class="requirement-label">总签约需求</span>
+                                <span class="requirement-value" id="total-signings">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="quarterly-breakdown">
+                    <h3>季度目标分解</h3>
+                    <div class="quarters-grid">
+                        <div class="quarter-card">
+                            <h4>第一季度</h4>
+                            <div class="quarter-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="q1-progress"></div>
+                                </div>
+                                <span class="progress-text" id="q1-text">0%</span>
+                            </div>
+                            <div class="quarter-details">
+                                <span>目标: <strong id="q1-target">¥0</strong></span>
+                                <span>实际: <strong id="q1-actual">¥0</strong></span>
+                            </div>
+                        </div>
+                        
+                        <div class="quarter-card">
+                            <h4>第二季度</h4>
+                            <div class="quarter-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="q2-progress"></div>
+                                </div>
+                                <span class="progress-text" id="q2-text">0%</span>
+                            </div>
+                            <div class="quarter-details">
+                                <span>目标: <strong id="q2-target">¥0</strong></span>
+                                <span>实际: <strong id="q2-actual">¥0</strong></span>
+                            </div>
+                        </div>
+                        
+                        <div class="quarter-card">
+                            <h4>第三季度</h4>
+                            <div class="quarter-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="q3-progress"></div>
+                                </div>
+                                <span class="progress-text" id="q3-text">0%</span>
+                            </div>
+                            <div class="quarter-details">
+                                <span>目标: <strong id="q3-target">¥0</strong></span>
+                                <span>实际: <strong id="q3-actual">¥0</strong></span>
+                            </div>
+                        </div>
+                        
+                        <div class="quarter-card">
+                            <h4>第四季度</h4>
+                            <div class="quarter-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="q4-progress"></div>
+                                </div>
+                                <span class="progress-text" id="q4-text">0%</span>
+                            </div>
+                            <div class="quarter-details">
+                                <span>目标: <strong id="q4-target">¥0</strong></span>
+                                <span>实际: <strong id="q4-actual">¥0</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 设置页面 -->
+            <div id="settings-content" class="page-content">
+                <div class="page-header">
+                    <h1>系统设置</h1>
+                    <p>配置业务参数和系统选项</p>
+                </div>
+                
+                <div class="settings-form">
+                    <div class="form-section">
+                        <h3>基础业务参数</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="unit-price">客单价（元）</label>
+                                <input type="number" id="unit-price" name="unitPrice" min="0" step="1000" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="conversion-rate">转化率（%）</label>
+                                <input type="number" id="conversion-rate" name="conversionRate" min="0" max="100" step="0.1" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="visit-rate">到店率（%）</label>
+                                <input type="number" id="visit-rate" name="visitRate" min="0" max="100" step="0.1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="gross-margin">毛利率（%）</label>
+                                <input type="number" id="gross-margin" name="grossMargin" min="0" max="100" step="0.1" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="annual-target">年度目标（元）</label>
+                                <input type="number" id="annual-target" name="annualTarget" min="0" step="10000" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>季度目标分解</h3>
+                        <div class="quarterly-settings">
+                            <div class="quarter-setting">
+                                <label>第一季度</label>
+                                <div class="quarter-inputs">
+                                    <input type="number" id="q1-target" name="q1Target" min="0" step="10000" placeholder="目标金额">
+                                    <input type="number" id="q1-weight" name="q1Weight" min="0" max="100" step="0.1" placeholder="权重%">
+                                </div>
+                            </div>
+                            <div class="quarter-setting">
+                                <label>第二季度</label>
+                                <div class="quarter-inputs">
+                                    <input type="number" id="q2-target" name="q2Target" min="0" step="10000" placeholder="目标金额">
+                                    <input type="number" id="q2-weight" name="q2Weight" min="0" max="100" step="0.1" placeholder="权重%">
+                                </div>
+                            </div>
+                            <div class="quarter-setting">
+                                <label>第三季度</label>
+                                <div class="quarter-inputs">
+                                    <input type="number" id="q3-target" name="q3Target" min="0" step="10000" placeholder="目标金额">
+                                    <input type="number" id="q3-weight" name="q3Weight" min="0" max="100" step="0.1" placeholder="权重%">
+                                </div>
+                            </div>
+                            <div class="quarter-setting">
+                                <label>第四季度</label>
+                                <div class="quarter-inputs">
+                                    <input type="number" id="q4-target" name="q4Target" min="0" step="10000" placeholder="目标金额">
+                                    <input type="number" id="q4-weight" name="q4Weight" min="0" max="100" step="0.1" placeholder="权重%">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" id="save-settings" class="btn btn-primary">保存设置</button>
+                        <button type="button" id="reset-settings" class="btn btn-secondary">重置为默认</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 模态框 -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">标题</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                内容
+            </div>
+            <div class="modal-footer" id="modal-footer">
+                <button class="btn btn-secondary" id="modal-cancel">取消</button>
+                <button class="btn btn-primary" id="modal-confirm">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知 -->
+    <div id="notification" class="notification"></div>
+
+    <!-- 加载指示器 -->
+    <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <span>加载中...</span>
+    </div>
+
+    <!-- JavaScript文件 -->
+    <script src="js/app.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/charts.js"></script>
+</body>
+</html>

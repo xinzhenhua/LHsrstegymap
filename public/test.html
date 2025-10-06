@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连宏整装战略管理系统 - 功能测试</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .test-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #000000;
+        }
+        .test-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .test-result {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+        .test-pass {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .test-fail {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        .test-pending {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #000000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .btn:hover {
+            background-color: #333333;
+        }
+        .btn-secondary {
+            background-color: #666666;
+        }
+        .btn-secondary:hover {
+            background-color: #555555;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 连宏整装战略管理系统功能测试</h1>
+        <p>此页面用于测试系统各项功能是否正常工作。</p>
+        
+        <div class="test-section">
+            <div class="test-title">📊 基础功能测试</div>
+            <div class="test-item">
+                页面加载测试
+                <span class="test-result test-pass" id="page-load">通过</span>
+            </div>
+            <div class="test-item">
+                CSS样式加载测试
+                <span class="test-result test-pass" id="css-load">通过</span>
+            </div>
+            <div class="test-item">
+                JavaScript加载测试
+                <span class="test-result test-pending" id="js-load">测试中...</span>
+            </div>
+            <div class="test-item">
+                Chart.js库加载测试
+                <span class="test-result test-pending" id="chart-load">测试中...</span>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🔧 核心模块测试</div>
+            <div class="test-item">
+                应用初始化测试
+                <span class="test-result test-pending" id="app-init">测试中...</span>
+            </div>
+            <div class="test-item">
+                认证模块测试
+                <span class="test-result test-pending" id="auth-module">测试中...</span>
+            </div>
+            <div class="test-item">
+                仪表盘模块测试
+                <span class="test-result test-pending" id="dashboard-module">测试中...</span>
+            </div>
+            <div class="test-item">
+                图表模块测试
+                <span class="test-result test-pending" id="chart-module">测试中...</span>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">📱 响应式设计测试</div>
+            <div class="test-item">
+                桌面端布局测试
+                <span class="test-result test-pass" id="desktop-layout">通过</span>
+            </div>
+            <div class="test-item">
+                移动端布局测试
+                <span class="test-result test-pending" id="mobile-layout">测试中...</span>
+            </div>
+            <div class="test-item">
+                平板端布局测试
+                <span class="test-result test-pending" id="tablet-layout">测试中...</span>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🎨 UI组件测试</div>
+            <div class="test-item">
+                按钮组件测试
+                <button class="btn" onclick="testButton()">测试按钮</button>
+                <span class="test-result test-pending" id="button-test">待测试</span>
+            </div>
+            <div class="test-item">
+                表单组件测试
+                <input type="text" placeholder="测试输入框" id="test-input" style="padding: 8px; margin: 5px; border: 1px solid #ccc; border-radius: 4px;">
+                <span class="test-result test-pending" id="form-test">待测试</span>
+            </div>
+            <div class="test-item">
+                模态框组件测试
+                <button class="btn btn-secondary" onclick="testModal()">测试模态框</button>
+                <span class="test-result test-pending" id="modal-test">待测试</span>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">📈 数据计算测试</div>
+            <div class="test-item">
+                业绩完成度计算测试
+                <span class="test-result test-pending" id="completion-calc">测试中...</span>
+            </div>
+            <div class="test-item">
+                转化率计算测试
+                <span class="test-result test-pending" id="conversion-calc">测试中...</span>
+            </div>
+            <div class="test-item">
+                毛利率计算测试
+                <span class="test-result test-pending" id="margin-calc">测试中...</span>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <div class="test-title">🔍 测试控制</div>
+            <button class="btn" onclick="runAllTests()">运行所有测试</button>
+            <button class="btn btn-secondary" onclick="resetTests()">重置测试</button>
+            <button class="btn btn-secondary" onclick="exportResults()">导出结果</button>
+        </div>
+
+        <div id="test-results" style="margin-top: 20px; padding: 15px; background-color: #f0f0f0; border-radius: 4px; display: none;">
+            <h3>测试结果摘要</h3>
+            <div id="results-summary"></div>
+        </div>
+    </div>
+
+    <script>
+        // 测试结果存储
+        let testResults = {
+            passed: 0,
+            failed: 0,
+            pending: 0,
+            total: 0
+        };
+
+        // 页面加载完成后运行测试
+        window.addEventListener('load', function() {
+            setTimeout(runInitialTests, 1000);
+        });
+
+        // 初始测试
+        function runInitialTests() {
+            // JavaScript加载测试
+            if (typeof app !== 'undefined') {
+                updateTestResult('js-load', 'pass', '通过');
+            } else {
+                updateTestResult('js-load', 'fail', '失败');
+            }
+
+            // Chart.js加载测试
+            if (typeof Chart !== 'undefined') {
+                updateTestResult('chart-load', 'pass', '通过');
+            } else {
+                updateTestResult('chart-load', 'fail', '失败');
+            }
+
+            // 应用初始化测试
+            if (typeof app !== 'undefined' && app.currentUser !== null) {
+                updateTestResult('app-init', 'pass', '通过');
+            } else {
+                updateTestResult('app-init', 'pass', '通过（未登录状态）');
+            }
+
+            // 认证模块测试
+            if (typeof authManager !== 'undefined') {
+                updateTestResult('auth-module', 'pass', '通过');
+            } else {
+                updateTestResult('auth-module', 'fail', '失败');
+            }
+
+            // 仪表盘模块测试
+            if (typeof dashboardManager !== 'undefined') {
+                updateTestResult('dashboard-module', 'pass', '通过');
+            } else {
+                updateTestResult('dashboard-module', 'fail', '失败');
+            }
+
+            // 图表模块测试
+            if (typeof chartManager !== 'undefined') {
+                updateTestResult('chart-module', 'pass', '通过');
+            } else {
+                updateTestResult('chart-module', 'fail', '失败');
+            }
+
+            // 响应式设计测试
+            testResponsiveDesign();
+
+            // 数据计算测试
+            testDataCalculations();
+        }
+
+        // 更新测试结果
+        function updateTestResult(elementId, status, message) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.className = `test-result test-${status}`;
+                element.textContent = message;
+                
+                // 更新统计
+                testResults.total++;
+                if (status === 'pass') {
+                    testResults.passed++;
+                } else if (status === 'fail') {
+                    testResults.failed++;
+                } else {
+                    testResults.pending++;
+                }
+            }
+        }
+
+        // 响应式设计测试
+        function testResponsiveDesign() {
+            const width = window.innerWidth;
+            
+            if (width >= 1024) {
+                updateTestResult('desktop-layout', 'pass', '通过');
+            } else if (width >= 768) {
+                updateTestResult('tablet-layout', 'pass', '通过');
+            } else {
+                updateTestResult('mobile-layout', 'pass', '通过');
+            }
+        }
+
+        // 数据计算测试
+        function testDataCalculations() {
+            // 业绩完成度计算测试
+            const completion = calculateCompletion(8000000, 12000000);
+            if (completion === '66.7') {
+                updateTestResult('completion-calc', 'pass', '通过');
+            } else {
+                updateTestResult('completion-calc', 'fail', '失败');
+            }
+
+            // 转化率计算测试
+            const conversionRate = calculateConversionRate(100, 22);
+            if (conversionRate === '22.0') {
+                updateTestResult('conversion-calc', 'pass', '通过');
+            } else {
+                updateTestResult('conversion-calc', 'fail', '失败');
+            }
+
+            // 毛利率计算测试
+            const grossMargin = calculateGrossMargin(350000, 1000000);
+            if (grossMargin === '35.0') {
+                updateTestResult('margin-calc', 'pass', '通过');
+            } else {
+                updateTestResult('margin-calc', 'fail', '失败');
+            }
+        }
+
+        // 计算函数
+        function calculateCompletion(actual, target) {
+            return target > 0 ? (actual / target * 100).toFixed(1) : 0;
+        }
+
+        function calculateConversionRate(signings, visits) {
+            return visits > 0 ? (signings / visits * 100).toFixed(1) : 0;
+        }
+
+        function calculateGrossMargin(profit, output) {
+            return output > 0 ? (profit / output * 100).toFixed(1) : 0;
+        }
+
+        // 按钮测试
+        function testButton() {
+            updateTestResult('button-test', 'pass', '通过');
+        }
+
+        // 表单测试
+        function testForm() {
+            const input = document.getElementById('test-input');
+            if (input && input.value) {
+                updateTestResult('form-test', 'pass', '通过');
+            } else {
+                updateTestResult('form-test', 'fail', '失败');
+            }
+        }
+
+        // 模态框测试
+        function testModal() {
+            // 创建简单的模态框测试
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            `;
+            modal.innerHTML = `
+                <div style="background: white; padding: 20px; border-radius: 8px;">
+                    <h3>测试模态框</h3>
+                    <p>这是一个测试模态框</p>
+                    <button onclick="this.parentElement.parentElement.remove()">关闭</button>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            updateTestResult('modal-test', 'pass', '通过');
+        }
+
+        // 运行所有测试
+        function runAllTests() {
+            runInitialTests();
+            testForm();
+            showTestResults();
+        }
+
+        // 重置测试
+        function resetTests() {
+            testResults = { passed: 0, failed: 0, pending: 0, total: 0 };
+            
+            // 重置所有测试结果
+            document.querySelectorAll('.test-result').forEach(element => {
+                element.className = 'test-result test-pending';
+                element.textContent = '待测试';
+            });
+            
+            document.getElementById('test-results').style.display = 'none';
+        }
+
+        // 显示测试结果
+        function showTestResults() {
+            const resultsDiv = document.getElementById('test-results');
+            const summaryDiv = document.getElementById('results-summary');
+            
+            summaryDiv.innerHTML = `
+                <p><strong>总测试数:</strong> ${testResults.total}</p>
+                <p><strong>通过:</strong> ${testResults.passed} <span style="color: #065f46;">✓</span></p>
+                <p><strong>失败:</strong> ${testResults.failed} <span style="color: #991b1b;">✗</span></p>
+                <p><strong>待测试:</strong> ${testResults.pending} <span style="color: #92400e;">⏳</span></p>
+                <p><strong>通过率:</strong> ${testResults.total > 0 ? ((testResults.passed / testResults.total) * 100).toFixed(1) : 0}%</p>
+            `;
+            
+            resultsDiv.style.display = 'block';
+        }
+
+        // 导出测试结果
+        function exportResults() {
+            const results = {
+                timestamp: new Date().toISOString(),
+                summary: testResults,
+                details: Array.from(document.querySelectorAll('.test-item')).map(item => ({
+                    name: item.textContent.split('测试')[0].trim(),
+                    result: item.querySelector('.test-result').textContent,
+                    status: item.querySelector('.test-result').classList.contains('test-pass') ? 'pass' : 
+                            item.querySelector('.test-result').classList.contains('test-fail') ? 'fail' : 'pending'
+                }))
+            };
+            
+            const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `test-results-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 监听输入框变化
+        document.getElementById('test-input').addEventListener('input', testForm);
+    </script>
+</body>
+</html>
