@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>连宏整装 - 战略计划仪表盘</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/leancloud-storage@4.13.2/dist/av-min.js"></script>
     <style>
         :root {
             --primary-color: #000000;
@@ -109,6 +110,24 @@
         .btn-outline:hover {
             background: var(--primary-color);
             color: white;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
         }
         
         .card {
@@ -693,6 +712,74 @@
         .data-summary-value {
             font-weight: bold;
         }
+        
+        .history-item {
+            padding: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .history-item:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .history-item.active {
+            border-color: var(--primary-color);
+            background-color: #f0f8ff;
+        }
+        
+        .history-title {
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        
+        .history-date {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .confirm-dialog {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        
+        .confirm-dialog h3 {
+            margin-bottom: 15px;
+        }
+        
+        .confirm-dialog p {
+            margin-bottom: 20px;
+            color: #666;
+        }
+        
+        .confirm-dialog-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .data-management {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .data-management h3 {
+            margin-bottom: 15px;
+        }
+        
+        .data-management-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -706,6 +793,7 @@
             <div class="button-group">
                 <button id="settings-btn" class="btn btn-outline">设置目标</button>
                 <button id="data-maintenance-btn" class="btn btn-outline">数据维护</button>
+                <button id="history-btn" class="btn btn-outline">历史记录</button>
                 <button id="war-room-btn" class="btn">作战沙盘</button>
             </div>
         </header>
@@ -979,6 +1067,28 @@
         </div>
     </div>
 
+    <!-- 历史记录模态框 -->
+    <div id="history-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="close-history">&times;</span>
+            <h2>历史记录</h2>
+            <p>选择历史记录查看或加载</p>
+            
+            <div id="history-list">
+                <!-- 历史记录将通过JS动态生成 -->
+            </div>
+            
+            <div class="data-management">
+                <h3>数据管理</h3>
+                <div class="data-management-buttons">
+                    <button id="clear-data-btn" class="btn btn-danger">清除当前数据</button>
+                    <button id="export-data-btn" class="btn btn-outline">导出数据</button>
+                    <button id="import-data-btn" class="btn btn-outline">导入数据</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 作战沙盘模态框 -->
     <div id="war-room-modal" class="modal">
         <div class="modal-content">
@@ -1000,7 +1110,26 @@
         </div>
     </div>
 
+    <!-- 确认对话框 -->
+    <div id="confirm-modal" class="modal">
+        <div class="confirm-dialog">
+            <h3 id="confirm-title">确认操作</h3>
+            <p id="confirm-message">您确定要执行此操作吗？</p>
+            <div class="confirm-dialog-buttons">
+                <button id="confirm-cancel" class="btn btn-outline">取消</button>
+                <button id="confirm-ok" class="btn btn-danger">确定</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // 初始化LeanCloud
+        AV.init({
+            appId: "5uaZRWV2qs7iSU7YKR0Vfr1I-gzGzoHsz",
+            appKey: "Uqt6lLXY47kssKzJy4QO4HAS",
+            serverURL: "https://5uazrwv2.lc-cn-n1-shared.com"
+        });
+
         // 使用模块化方式组织代码
         const DashboardApp = (function() {
             // 全局变量
@@ -1009,6 +1138,8 @@
             let monthlyData = {};
             let performanceChart = null;
             let comparisonChart = null;
+            let currentRecordId = null;
+            let historyRecords = [];
             
             // 淡旺季权重分配
             const seasonWeights = {
@@ -1051,23 +1182,39 @@
                 // 模态框
                 settingsModal: document.getElementById('settings-modal'),
                 dataModal: document.getElementById('data-modal'),
+                historyModal: document.getElementById('history-modal'),
                 warRoomModal: document.getElementById('war-room-modal'),
+                confirmModal: document.getElementById('confirm-modal'),
                 
                 // 按钮
                 settingsBtn: document.getElementById('settings-btn'),
                 dataMaintenanceBtn: document.getElementById('data-maintenance-btn'),
+                historyBtn: document.getElementById('history-btn'),
                 warRoomBtn: document.getElementById('war-room-btn'),
                 closeSettings: document.getElementById('close-settings'),
                 closeData: document.getElementById('close-data'),
+                closeHistory: document.getElementById('close-history'),
                 closeWarRoom: document.getElementById('close-war-room'),
                 saveSettings: document.getElementById('save-settings'),
                 saveData: document.getElementById('save-data'),
+                clearDataBtn: document.getElementById('clear-data-btn'),
+                exportDataBtn: document.getElementById('export-data-btn'),
+                importDataBtn: document.getElementById('import-data-btn'),
+                confirmCancel: document.getElementById('confirm-cancel'),
+                confirmOk: document.getElementById('confirm-ok'),
                 
                 // 通知
                 notification: document.getElementById('notification'),
                 
                 // 作战沙盘
-                warRoomContent: document.getElementById('war-room-content')
+                warRoomContent: document.getElementById('war-room-content'),
+                
+                // 历史记录
+                historyList: document.getElementById('history-list'),
+                
+                // 确认对话框
+                confirmTitle: document.getElementById('confirm-title'),
+                confirmMessage: document.getElementById('confirm-message')
             };
 
             // 工具函数
@@ -1140,6 +1287,12 @@
                     weeklyTargets.push(Math.max(0, remaining));
                     
                     return weeklyTargets;
+                },
+                
+                // 格式化日期
+                formatDate(date) {
+                    const d = new Date(date);
+                    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
                 }
             };
 
@@ -1405,6 +1558,11 @@
                     loadCurrentWeekData();
                 });
                 
+                elements.historyBtn.addEventListener('click', () => {
+                    elements.historyModal.style.display = 'flex';
+                    loadHistoryRecords();
+                });
+                
                 elements.warRoomBtn.addEventListener('click', () => {
                     elements.warRoomModal.style.display = 'flex';
                     updateWarRoom();
@@ -1419,12 +1577,16 @@
                     elements.dataModal.style.display = 'none';
                 });
                 
+                elements.closeHistory.addEventListener('click', () => {
+                    elements.historyModal.style.display = 'none';
+                });
+                
                 elements.closeWarRoom.addEventListener('click', () => {
                     elements.warRoomModal.style.display = 'none';
                 });
                 
                 // 点击模态框外部关闭
-                [elements.settingsModal, elements.dataModal, elements.warRoomModal].forEach(modal => {
+                [elements.settingsModal, elements.dataModal, elements.historyModal, elements.warRoomModal, elements.confirmModal].forEach(modal => {
                     modal.addEventListener('click', (e) => {
                         if (e.target === modal) {
                             modal.style.display = 'none';
@@ -1458,6 +1620,26 @@
                 
                 // 当开始时间改变时，自动计算结束时间
                 document.getElementById('plan-start-date').addEventListener('change', updateEndDate);
+                
+                // 数据管理按钮
+                elements.clearDataBtn.addEventListener('click', () => {
+                    showConfirmDialog('清除数据', '您确定要清除所有数据吗？此操作不可撤销。', clearAllData);
+                });
+                
+                elements.exportDataBtn.addEventListener('click', exportData);
+                elements.importDataBtn.addEventListener('click', importData);
+                
+                // 确认对话框按钮
+                elements.confirmCancel.addEventListener('click', () => {
+                    elements.confirmModal.style.display = 'none';
+                });
+                
+                elements.confirmOk.addEventListener('click', () => {
+                    if (window.confirmCallback) {
+                        window.confirmCallback();
+                    }
+                    elements.confirmModal.style.display = 'none';
+                });
             }
 
             // 切换标签页
@@ -1579,7 +1761,7 @@
                 document.getElementById('monthly-gross-profit').value = monthData.grossProfit ? monthData.grossProfit / 10000 : '';
             }
 
-            // 保存目标数据到localStorage
+            // 保存目标数据到LeanCloud
             async function saveTargetData() {
                 utils.setLoading(elements.saveSettings, true);
                 
@@ -1609,13 +1791,11 @@
                     // 计算季度目标
                     targetData.quarterlyTargets = calculateQuarterlyTargets(targetData.annualTarget, region, startDate);
                     
-                    localStorage.setItem('targetData', JSON.stringify(targetData));
-                    
                     // 更新作战沙盘中的目标
                     updateWarRoomTargets();
                     
-                    // 模拟异步操作
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // 保存到LeanCloud
+                    await saveToLeanCloud();
                     
                     utils.showNotification('目标数据保存成功！');
                     elements.settingsModal.style.display = 'none';
@@ -1664,7 +1844,7 @@
                 return quarterlyTargets;
             }
 
-            // 保存实际数据到localStorage
+            // 保存实际数据到LeanCloud
             async function saveActualData() {
                 utils.setLoading(elements.saveData, true);
                 
@@ -1675,9 +1855,6 @@
                         // 保存周数据
                         const week = parseInt(document.getElementById('week-select').value);
                         
-                        // 获取现有周数据
-                        let weeklyData = utils.safeParseJSON(localStorage.getItem('weeklyData'));
-                        
                         // 更新当前周数据
                         weeklyData[week] = {
                             leads: parseInt(document.getElementById('actual-leads').value) || 0,
@@ -1687,14 +1864,9 @@
                             outputValue: parseInt(document.getElementById('actual-output').value) * 10000 || 0,
                             grossProfit: parseInt(document.getElementById('actual-gross-profit').value) * 10000 || 0
                         };
-                        
-                        localStorage.setItem('weeklyData', JSON.stringify(weeklyData));
                     } else {
                         // 保存月数据
                         const month = parseInt(document.getElementById('month-select').value);
-                        
-                        // 获取现有月数据
-                        let monthlyData = utils.safeParseJSON(localStorage.getItem('monthlyData'));
                         
                         // 更新当前月数据
                         monthlyData[month] = {
@@ -1705,12 +1877,10 @@
                             outputValue: parseInt(document.getElementById('monthly-output').value) * 10000 || 0,
                             grossProfit: parseInt(document.getElementById('monthly-gross-profit').value) * 10000 || 0
                         };
-                        
-                        localStorage.setItem('monthlyData', JSON.stringify(monthlyData));
                     }
                     
-                    // 模拟异步操作
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // 保存到LeanCloud
+                    await saveToLeanCloud();
                     
                     utils.showNotification('实际数据保存成功！');
                     elements.dataModal.style.display = 'none';
@@ -1723,27 +1893,101 @@
                 }
             }
 
-            // 从localStorage加载用户数据
-            function loadUserData() {
-                // 加载目标数据
-                const storedTargetData = localStorage.getItem('targetData');
-                if (storedTargetData) {
-                    targetData = utils.safeParseJSON(storedTargetData);
-                    
-                    // 更新设置表单
-                    document.getElementById('region').value = targetData.region || 'north';
-                    document.getElementById('plan-start-date').value = targetData.startDate || '';
-                    document.getElementById('plan-end-date').value = targetData.endDate || '';
-                    document.getElementById('unit-price').value = targetData.unitPrice || 300000;
-                    document.getElementById('conversion-rate').value = targetData.conversionRate || 22;
-                    document.getElementById('visit-rate').value = targetData.visitRate || 40;
-                    document.getElementById('gross-margin').value = targetData.grossMargin || 35;
-                    document.getElementById('annual-target').value = targetData.annualTarget / 10000 || 1200;
-                    
-                    // 更新作战沙盘中的目标
-                    updateWarRoomTargets();
+            // 保存数据到LeanCloud
+            async function saveToLeanCloud() {
+                const DashboardData = AV.Object.extend('DashboardData');
+                let dashboardData;
+                
+                if (currentRecordId) {
+                    // 更新现有记录
+                    dashboardData = AV.Object.createWithoutData('DashboardData', currentRecordId);
                 } else {
-                    // 如果没有目标数据，初始化默认值
+                    // 创建新记录
+                    dashboardData = new DashboardData();
+                }
+                
+                dashboardData.set('targetData', targetData);
+                dashboardData.set('weeklyData', weeklyData);
+                dashboardData.set('monthlyData', monthlyData);
+                dashboardData.set('name', `记录 ${new Date().toLocaleDateString()}`);
+                
+                await dashboardData.save();
+                currentRecordId = dashboardData.id;
+                
+                // 重新加载历史记录
+                await loadHistoryRecords();
+            }
+
+            // 从LeanCloud加载用户数据
+            async function loadUserData() {
+                try {
+                    // 尝试从LeanCloud加载最新记录
+                    const query = new AV.Query('DashboardData');
+                    query.descending('createdAt');
+                    query.limit(1);
+                    
+                    const results = await query.find();
+                    
+                    if (results.length > 0) {
+                        const data = results[0];
+                        currentRecordId = data.id;
+                        
+                        targetData = data.get('targetData') || {};
+                        weeklyData = data.get('weeklyData') || {};
+                        monthlyData = data.get('monthlyData') || {};
+                        
+                        // 更新设置表单
+                        document.getElementById('region').value = targetData.region || 'north';
+                        document.getElementById('plan-start-date').value = targetData.startDate || '';
+                        document.getElementById('plan-end-date').value = targetData.endDate || '';
+                        document.getElementById('unit-price').value = targetData.unitPrice || 300000;
+                        document.getElementById('conversion-rate').value = targetData.conversionRate || 22;
+                        document.getElementById('visit-rate').value = targetData.visitRate || 40;
+                        document.getElementById('gross-margin').value = targetData.grossMargin || 35;
+                        document.getElementById('annual-target').value = targetData.annualTarget / 10000 || 1200;
+                        
+                        // 更新作战沙盘中的目标
+                        updateWarRoomTargets();
+                    } else {
+                        // 如果没有目标数据，初始化默认值
+                        targetData = {
+                            region: 'north',
+                            unitPrice: 300000,
+                            conversionRate: 22,
+                            visitRate: 40,
+                            grossMargin: 35,
+                            annualTarget: 12000000
+                        };
+                        // 计算月度目标
+                        targetData.monthlyTargets = calculateMonthlyTargets(targetData.annualTarget, targetData.region, document.getElementById('plan-start-date').value);
+                        // 计算季度目标
+                        targetData.quarterlyTargets = calculateQuarterlyTargets(targetData.annualTarget, targetData.region, document.getElementById('plan-start-date').value);
+                        // 更新作战沙盘中的目标
+                        updateWarRoomTargets();
+                    }
+                    
+                    // 计算累计数据
+                    const calculatedData = calculateMetrics();
+                    
+                    // 更新仪表盘显示
+                    updateDashboard(calculatedData);
+                    
+                    // 更新月度汇总表格
+                    updateMonthlyDataTable(calculatedData);
+                    
+                    // 更新战略规划表格
+                    updateStrategyTable(calculatedData);
+                    
+                    // 更新关键指标追踪
+                    updateKeyMetrics(calculatedData);
+                    
+                    // 更新图表
+                    updateCharts(calculatedData);
+                } catch (error) {
+                    console.error('从LeanCloud加载数据时出错:', error);
+                    utils.showNotification('加载数据失败，使用本地默认数据');
+                    
+                    // 使用本地默认数据
                     targetData = {
                         region: 'north',
                         unitPrice: 300000,
@@ -1758,31 +2002,25 @@
                     targetData.quarterlyTargets = calculateQuarterlyTargets(targetData.annualTarget, targetData.region, document.getElementById('plan-start-date').value);
                     // 更新作战沙盘中的目标
                     updateWarRoomTargets();
+                    
+                    // 计算累计数据
+                    const calculatedData = calculateMetrics();
+                    
+                    // 更新仪表盘显示
+                    updateDashboard(calculatedData);
+                    
+                    // 更新月度汇总表格
+                    updateMonthlyDataTable(calculatedData);
+                    
+                    // 更新战略规划表格
+                    updateStrategyTable(calculatedData);
+                    
+                    // 更新关键指标追踪
+                    updateKeyMetrics(calculatedData);
+                    
+                    // 更新图表
+                    updateCharts(calculatedData);
                 }
-                
-                // 加载周数据
-                weeklyData = utils.safeParseJSON(localStorage.getItem('weeklyData'));
-                
-                // 加载月数据
-                monthlyData = utils.safeParseJSON(localStorage.getItem('monthlyData'));
-                
-                // 计算累计数据
-                const calculatedData = calculateMetrics();
-                
-                // 更新仪表盘显示
-                updateDashboard(calculatedData);
-                
-                // 更新月度汇总表格
-                updateMonthlyDataTable(calculatedData);
-                
-                // 更新战略规划表格
-                updateStrategyTable(calculatedData);
-                
-                // 更新关键指标追踪
-                updateKeyMetrics(calculatedData);
-                
-                // 更新图表
-                updateCharts(calculatedData);
             }
 
             // 更新仪表盘显示
@@ -2320,6 +2558,186 @@
                 });
                 
                 return weeklyTargets;
+            }
+
+            // 加载历史记录
+            async function loadHistoryRecords() {
+                try {
+                    const query = new AV.Query('DashboardData');
+                    query.descending('createdAt');
+                    query.limit(50); // 限制加载50条记录
+                    
+                    const results = await query.find();
+                    historyRecords = results;
+                    
+                    elements.historyList.innerHTML = '';
+                    
+                    if (results.length === 0) {
+                        elements.historyList.innerHTML = '<div class="empty-state">暂无历史记录</div>';
+                        return;
+                    }
+                    
+                    results.forEach((record, index) => {
+                        const historyItem = document.createElement('div');
+                        historyItem.className = 'history-item';
+                        if (record.id === currentRecordId) {
+                            historyItem.classList.add('active');
+                        }
+                        
+                        const createdAt = new Date(record.createdAt);
+                        const name = record.get('name') || `记录 ${createdAt.toLocaleDateString()}`;
+                        
+                        historyItem.innerHTML = `
+                            <div class="history-title">${name}</div>
+                            <div class="history-date">${utils.formatDate(record.createdAt)}</div>
+                        `;
+                        
+                        historyItem.addEventListener('click', () => {
+                            loadHistoryRecord(record);
+                        });
+                        
+                        elements.historyList.appendChild(historyItem);
+                    });
+                } catch (error) {
+                    console.error('加载历史记录时出错:', error);
+                    utils.showNotification('加载历史记录失败');
+                }
+            }
+
+            // 加载历史记录
+            function loadHistoryRecord(record) {
+                currentRecordId = record.id;
+                
+                targetData = record.get('targetData') || {};
+                weeklyData = record.get('weeklyData') || {};
+                monthlyData = record.get('monthlyData') || {};
+                
+                // 更新设置表单
+                document.getElementById('region').value = targetData.region || 'north';
+                document.getElementById('plan-start-date').value = targetData.startDate || '';
+                document.getElementById('plan-end-date').value = targetData.endDate || '';
+                document.getElementById('unit-price').value = targetData.unitPrice || 300000;
+                document.getElementById('conversion-rate').value = targetData.conversionRate || 22;
+                document.getElementById('visit-rate').value = targetData.visitRate || 40;
+                document.getElementById('gross-margin').value = targetData.grossMargin || 35;
+                document.getElementById('annual-target').value = targetData.annualTarget / 10000 || 1200;
+                
+                // 更新作战沙盘中的目标
+                updateWarRoomTargets();
+                
+                // 重新加载数据
+                loadUserData();
+                
+                // 关闭历史记录模态框
+                elements.historyModal.style.display = 'none';
+                
+                utils.showNotification('历史记录加载成功');
+            }
+
+            // 显示确认对话框
+            function showConfirmDialog(title, message, callback) {
+                elements.confirmTitle.textContent = title;
+                elements.confirmMessage.textContent = message;
+                window.confirmCallback = callback;
+                elements.confirmModal.style.display = 'flex';
+            }
+
+            // 清除所有数据
+            async function clearAllData() {
+                try {
+                    // 重置数据
+                    targetData = {
+                        region: 'north',
+                        unitPrice: 300000,
+                        conversionRate: 22,
+                        visitRate: 40,
+                        grossMargin: 35,
+                        annualTarget: 12000000
+                    };
+                    weeklyData = {};
+                    monthlyData = {};
+                    
+                    // 计算月度目标
+                    targetData.monthlyTargets = calculateMonthlyTargets(targetData.annualTarget, targetData.region, document.getElementById('plan-start-date').value);
+                    // 计算季度目标
+                    targetData.quarterlyTargets = calculateQuarterlyTargets(targetData.annualTarget, targetData.region, document.getElementById('plan-start-date').value);
+                    
+                    // 保存到LeanCloud
+                    await saveToLeanCloud();
+                    
+                    // 重新加载数据
+                    loadUserData();
+                    
+                    utils.showNotification('数据清除成功');
+                } catch (error) {
+                    console.error('清除数据时出错:', error);
+                    utils.showNotification('清除数据失败');
+                }
+            }
+
+            // 导出数据
+            function exportData() {
+                const data = {
+                    targetData,
+                    weeklyData,
+                    monthlyData,
+                    exportDate: new Date().toISOString()
+                };
+                
+                const dataStr = JSON.stringify(data, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `连宏整装数据_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                utils.showNotification('数据导出成功');
+            }
+
+            // 导入数据
+            function importData() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                
+                input.onchange = e => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = event => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            
+                            if (data.targetData && data.weeklyData && data.monthlyData) {
+                                targetData = data.targetData;
+                                weeklyData = data.weeklyData;
+                                monthlyData = data.monthlyData;
+                                
+                                // 保存到LeanCloud
+                                saveToLeanCloud();
+                                
+                                // 重新加载数据
+                                loadUserData();
+                                
+                                utils.showNotification('数据导入成功');
+                            } else {
+                                utils.showNotification('文件格式不正确');
+                            }
+                        } catch (error) {
+                            console.error('导入数据时出错:', error);
+                            utils.showNotification('导入数据失败');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+                
+                input.click();
             }
 
             // 公开方法
