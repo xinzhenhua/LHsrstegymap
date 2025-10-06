@@ -2076,8 +2076,8 @@
                 // 计算实际指标
                 const completionRate = targetData.annualTarget > 0 ? 
                     Math.min((totalOutput / targetData.annualTarget * 100).toFixed(1), 100) : 0;
-                const avgConversionRate = totalMeasurements > 0 ? 
-                    (totalSignings / totalMeasurements * 100).toFixed(1) : 0;
+                const avgConversionRate = totalVisits > 0 ? 
+                    (totalSignings / totalVisits * 100).toFixed(1) : 0;
                 const avgGrossMargin = totalOutput > 0 ? 
                     (totalGrossProfit / totalOutput * 100).toFixed(1) : 0;
                 
