@@ -847,28 +847,28 @@
                 </div>
                 <div class="form-group">
                     <label for="unit-price">客单价 (元)</label>
-                    <input type="number" id="unit-price" placeholder="例如: 300000">
+                    <input type="number" id="unit-price" placeholder="例如: 300000" value="300000">
                 </div>
             </div>
             
             <div class="form-row">
                 <div class="form-group">
                     <label for="conversion-rate">转化率 (%)</label>
-                    <input type="number" id="conversion-rate" placeholder="例如: 22" min="0" max="100">
+                    <input type="number" id="conversion-rate" placeholder="例如: 22" min="0" max="100" value="22">
                 </div>
                 <div class="form-group">
                     <label for="visit-rate">到店率 (%)</label>
-                    <input type="number" id="visit-rate" placeholder="例如: 40" min="0" max="100">
+                    <input type="number" id="visit-rate" placeholder="例如: 40" min="0" max="100" value="40">
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label for="gross-margin">毛利率 (%)</label>
-                    <input type="number" id="gross-margin" placeholder="例如: 35" min="0" max="100">
+                    <input type="number" id="gross-margin" placeholder="例如: 35" min="0" max="100" value="35">
                 </div>
                 <div class="form-group">
                     <label for="annual-target">年度业绩目标 (万元)</label>
-                    <input type="number" id="annual-target" placeholder="例如: 1200">
+                    <input type="number" id="annual-target" placeholder="例如: 1200" value="1200">
                 </div>
             </div>
             <button id="save-settings" class="btn">
@@ -1143,6 +1143,247 @@
                 }
             };
 
+            // 根据产值目标计算其他目标
+            function calculateTargets(outputTarget, unitPrice, conversionRate, visitRate) {
+                // 确保所有参数都是有效的数字
+                outputTarget = Number(outputTarget) || 0;
+                unitPrice = Number(unitPrice) || 300000;
+                conversionRate = Number(conversionRate) || 22;
+                visitRate = Number(visitRate) || 40;
+                
+                // 防止除数为0
+                if (unitPrice <= 0) unitPrice = 300000;
+                if (conversionRate <= 0) conversionRate = 22;
+                if (visitRate <= 0) visitRate = 40;
+                
+                // 计算签约目标
+                const signingTarget = Math.ceil(outputTarget / unitPrice);
+                
+                // 计算到店目标
+                const visitTarget = Math.ceil(signingTarget / (conversionRate / 100));
+                
+                // 计算量房目标 (假设量房到到店的转化率为70%)
+                const measurementTarget = Math.ceil(visitTarget / 0.7);
+                
+                // 计算客资目标
+                const leadTarget = Math.ceil(measurementTarget / (visitRate / 100));
+                
+                return {
+                    signingTarget,
+                    visitTarget,
+                    measurementTarget,
+                    leadTarget
+                };
+            }
+
+            // 更新作战沙盘中的周目标计算
+            function updateWarRoomTargets() {
+                const region = targetData.region || 'north';
+                const unitPrice = targetData.unitPrice || 300000;
+                const conversionRate = targetData.conversionRate || 22;
+                const visitRate = targetData.visitRate || 40;
+                
+                // 为每个季度的每个月重新计算周目标
+                const quarters = ['q1', 'q2', 'q3', 'q4'];
+                
+                quarters.forEach(quarter => {
+                    const quarterData = getQuarterData(quarter);
+                    if (quarterData && quarterData.months) {
+                        quarterData.months.forEach(month => {
+                            if (month.weeklyTargets) {
+                                month.weeklyTargets.forEach((weeklyTarget, weekIndex) => {
+                                    // 计算该周的其他目标
+                                    const targets = calculateTargets(
+                                        weeklyTarget * 10000, // 转换为元
+                                        unitPrice,
+                                        conversionRate,
+                                        visitRate
+                                    );
+                                    
+                                    // 更新该周的目标数据
+                                    if (month.weeks && month.weeks[weekIndex]) {
+                                        month.weeks[weekIndex].leads = targets.leadTarget;
+                                        month.weeks[weekIndex].measurements = targets.measurementTarget;
+                                        month.weeks[weekIndex].visits = targets.visitTarget;
+                                        month.weeks[weekIndex].signings = targets.signingTarget;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+
+            // 获取季度数据
+            function getQuarterData(quarter) {
+                const startDate = targetData.startDate ? new Date(targetData.startDate + '-01') : new Date();
+                const startMonth = startDate.getMonth() + 1;
+                
+                // 确保有月度目标数据
+                const monthlyTargets = targetData.monthlyTargets || {};
+                
+                const quarters = {
+                    q1: {
+                        name: '第一季度',
+                        target: targetData.quarterlyTargets ? (targetData.quarterlyTargets[1]/10000).toFixed(0) : '0',
+                        months: [
+                            { 
+                                name: `${startMonth}月 - 启动期`, 
+                                season: 'low',
+                                monthlyTarget: monthlyTargets[1] ? (monthlyTargets[1]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 1, task: '系统搭建：团队磨合，SOP测试，内容储备' },
+                                    { week: 2, task: '小火慢炖：初步投流，测试内容与话术' },
+                                    { week: 3, task: '优化迭代：复盘数据，优化广告与落地页' },
+                                    { week: 4, task: '布局：策划内容，维持品牌热度' }
+                                ]
+                            },
+                            { 
+                                name: `${startMonth + 1}月 - 复苏期`, 
+                                season: 'medium',
+                                monthlyTarget: monthlyTargets[2] ? (monthlyTargets[2]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 5, task: '线上互动：社群维护，轻量内容' },
+                                    { week: 6, task: '唤醒市场：发布"装修攻略"系列内容' },
+                                    { week: 7, task: '蓄力冲锋：加大投流，为下月储备足量客资' },
+                                    { week: 8, task: '战前动员：锁定首批高意向客户，准备签约' }
+                                ]
+                            },
+                            { 
+                                name: `${startMonth + 2}月 - 旺季启动期`, 
+                                season: 'high',
+                                monthlyTarget: monthlyTargets[3] ? (monthlyTargets[3]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 9, task: '首战打响：全力转化前期蓄客，确保开门红' },
+                                    { week: 10, task: '旺季攻势：广告预算拉满，全员投入谈单' },
+                                    { week: 11, task: '持续攻坚：周中复盘，周末冲刺，不留遗憾' },
+                                    { week: 12, task: '月度收官：追赶目标，完成首月高峰指标' }
+                                ]
+                            }
+                        ]
+                    },
+                    q2: {
+                        name: '第二季度',
+                        target: targetData.quarterlyTargets ? (targetData.quarterlyTargets[2]/10000).toFixed(0) : '0',
+                        months: [
+                            { 
+                                name: `${startMonth + 3}月 - 装修黄金期`, 
+                                season: 'high',
+                                monthlyTarget: monthlyTargets[4] ? (monthlyTargets[4]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 13, task: '全面总攻：流量顶峰，全员停休，全力签约' },
+                                    { week: 14, task: '高点维持：保持高压态势，消化海量线索' },
+                                    { week: 15, task: '中期复盘：优化流程，解决瓶颈，提升人效' },
+                                    { week: 16, task: '巩固战果：确保本月成为全年业绩最高峰' }
+                                ]
+                            },
+                            { 
+                                name: `${startMonth + 4}月 - 劳动节促销期`, 
+                                season: 'high',
+                                monthlyTarget: monthlyTargets[5] ? (monthlyTargets[5]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 17, task: '假期攻坚：利用小长假，做专场促销活动' },
+                                    { week: 18, task: '平稳过渡：消化假期线索，防止业绩断崖' },
+                                    { week: 19, task: '深度挖掘：跟进所有意向客户，提高转化' },
+                                    { week: 20, task: '半程冲刺：为完成半年度目标做最后努力' }
+                                ]
+                            },
+                            { 
+                                name: `${startMonth + 5}月 - 半年度收官期`, 
+                                season: 'medium',
+                                monthlyTarget: monthlyTargets[6] ? (monthlyTargets[6]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 21, task: '承上启下：总结上半年，部署暑期战役' },
+                                    { week: 22, task: '应对淡季：调整内容策略，转向"夏季装修"话题' },
+                                    { week: 23, task: '暑期蓄客：开始为9-10月旺季储备潜在客户' },
+                                    { week: 24, task: '半年度复盘：全面复盘数据，优化下半年策略' }
+                                ]
+                            }
+                        ]
+                    },
+                    q3: {
+                        name: '第三季度',
+                        target: targetData.quarterlyTargets ? (targetData.quarterlyTargets[3]/10000).toFixed(0) : '0',
+                        months: [
+                            { 
+                                name: `${startMonth + 6}月 - 暑期淡季应对期`, 
+                                season: 'low',
+                                monthlyTarget: monthlyTargets[7] ? (monthlyTargets[7]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 25, task: '暑期调整：团队休整，技能培训，优化流程' },
+                                    { week: 26, task: '内容深耕：制作"夏季装修注意事项"系列内容' },
+                                    { week: 27, task: '客户维系：回访老客户，转介绍活动' },
+                                    { week: 28, task: '系统优化：CRM系统升级，提升客户管理效率' }
+                                ]
+                            },
+                            { 
+                                name: `${startMonth + 7}月 - 秋季旺季准备期`, 
+                                season: 'medium',
+                                monthlyTarget: monthlyTargets[8] ? (monthlyTargets[8]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 29, task: '旺季预热：启动秋季装修季预热活动' },
+                                    { week: 30, task: '渠道拓展：与物业、房产中介建立合作关系' },
+                                    { week: 31, task: '团队动员：秋季战役动员，明确目标与激励政策' },
+                                    { week: 32, task: '资源准备：确保材料、施工队等资源到位' }
+                                ]
+                            },
+                            { 
+                                name: `${startMonth + 8}月 - 秋季旺季启动期`, 
+                                season: 'high',
+                                monthlyTarget: monthlyTargets[9] ? (monthlyTargets[9]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 33, task: '旺季启动：秋季装修季正式启动，加大投放' },
+                                    { week: 34, task: '集中转化：全力转化前期蓄客，确保开门红' },
+                                    { week: 35, task: '持续攻坚：保持高强度转化，不留遗憾' },
+                                    { week: 36, task: '月度收官：追赶目标，完成本月高峰指标' }
+                                ]
+                            }
+                        ]
+                    },
+                    q4: {
+                        name: '第四季度',
+                        target: targetData.quarterlyTargets ? (targetData.quarterlyTargets[4]/10000).toFixed(0) : '0',
+                        months: [
+                            { 
+                                name: `${startMonth + 9}月 - 秋季旺季延续期`, 
+                                season: 'high',
+                                monthlyTarget: monthlyTargets[10] ? (monthlyTargets[10]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 37, task: '旺季延续：保持投放力度，继续收割市场' },
+                                    { week: 38, task: '国庆促销：策划国庆黄金周促销活动' },
+                                    { week: 39, task: '假期攻坚：利用国庆假期，做专场促销' },
+                                    { week: 40, task: '平稳过渡：消化假期线索，防止业绩断崖' }
+                                ]
+                            },
+                            { 
+                                name: `${startMonth + 10}月 - 年终冲刺期`, 
+                                season: 'medium',
+                                monthlyTarget: monthlyTargets[11] ? (monthlyTargets[11]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 41, task: '年终冲刺：为完成年度目标做最后努力' },
+                                    { week: 42, task: '深度挖掘：跟进所有意向客户，提高转化' },
+                                    { week: 43, task: '目标追赶：针对缺口，制定专项追赶计划' },
+                                    { week: 44, task: '收官准备：准备年度总结，规划明年战略' }
+                                ]
+                            },
+                            { 
+                                name: `${startMonth + 11}月 - 年度收官期`, 
+                                season: 'low',
+                                monthlyTarget: monthlyTargets[12] ? (monthlyTargets[12]/10000).toFixed(0) : '0',
+                                weeks: [
+                                    { week: 45, task: '年度收官：完成年度最后一批签约' },
+                                    { week: 46, task: '年度复盘：全面复盘全年数据与经验' },
+                                    { week: 47, task: '明年规划：制定明年战略目标与计划' },
+                                    { week: 48, task: '团队建设：年终团建，激励团队士气' }
+                                ]
+                            }
+                        ]
+                    }
+                };
+                
+                return quarters[quarter];
+            }
+
             // 初始化应用
             function init() {
                 initEventListeners();
@@ -1370,6 +1611,9 @@
                     
                     localStorage.setItem('targetData', JSON.stringify(targetData));
                     
+                    // 更新作战沙盘中的目标
+                    updateWarRoomTargets();
+                    
                     // 模拟异步操作
                     await new Promise(resolve => setTimeout(resolve, 500));
                     
@@ -1490,11 +1734,14 @@
                     document.getElementById('region').value = targetData.region || 'north';
                     document.getElementById('plan-start-date').value = targetData.startDate || '';
                     document.getElementById('plan-end-date').value = targetData.endDate || '';
-                    document.getElementById('unit-price').value = targetData.unitPrice;
-                    document.getElementById('conversion-rate').value = targetData.conversionRate;
-                    document.getElementById('visit-rate').value = targetData.visitRate;
-                    document.getElementById('gross-margin').value = targetData.grossMargin;
-                    document.getElementById('annual-target').value = targetData.annualTarget / 10000;
+                    document.getElementById('unit-price').value = targetData.unitPrice || 300000;
+                    document.getElementById('conversion-rate').value = targetData.conversionRate || 22;
+                    document.getElementById('visit-rate').value = targetData.visitRate || 40;
+                    document.getElementById('gross-margin').value = targetData.grossMargin || 35;
+                    document.getElementById('annual-target').value = targetData.annualTarget / 10000 || 1200;
+                    
+                    // 更新作战沙盘中的目标
+                    updateWarRoomTargets();
                 } else {
                     // 如果没有目标数据，初始化默认值
                     targetData = {
@@ -1509,6 +1756,8 @@
                     targetData.monthlyTargets = calculateMonthlyTargets(targetData.annualTarget, targetData.region, document.getElementById('plan-start-date').value);
                     // 计算季度目标
                     targetData.quarterlyTargets = calculateQuarterlyTargets(targetData.annualTarget, targetData.region, document.getElementById('plan-start-date').value);
+                    // 更新作战沙盘中的目标
+                    updateWarRoomTargets();
                 }
                 
                 // 加载周数据
@@ -1912,107 +2161,7 @@
                 const startYear = startDate.getFullYear();
                 const startMonth = startDate.getMonth() + 1;
                 
-                // 定义季度数据
-                const quarters = {
-                    q1: {
-                        name: '第一季度',
-                        target: targetData.quarterlyTargets ? (targetData.quarterlyTargets[1]/10000).toFixed(0) : '0',
-                        months: [
-                            { name: `${startMonth}月 - 启动期`, season: 'low', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[1]/10000).toFixed(0) : '0', weeks: [
-                                { week: 1, task: '系统搭建：团队磨合，SOP测试，内容储备', leads: 10, measurements: 2, visits: 1, signings: 0 },
-                                { week: 2, task: '小火慢炖：初步投流，测试内容与话术', leads: 15, measurements: 4, visits: 2, signings: 1 },
-                                { week: 3, task: '优化迭代：复盘数据，优化广告与落地页', leads: 20, measurements: 6, visits: 3, signings: 1 },
-                                { week: 4, task: '布局：策划内容，维持品牌热度', leads: 5, measurements: 2, visits: 1, signings: 0 }
-                            ]},
-                            { name: `${startMonth + 1}月 - 复苏期`, season: 'medium', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[2]/10000).toFixed(0) : '0', weeks: [
-                                { week: 5, task: '线上互动：社群维护，轻量内容', leads: 5, measurements: 0, visits: 0, signings: 0 },
-                                { week: 6, task: '唤醒市场：发布"装修攻略"系列内容', leads: 25, measurements: 8, visits: 4, signings: 2 },
-                                { week: 7, task: '蓄力冲锋：加大投流，为下月储备足量客资', leads: 30, measurements: 10, visits: 5, signings: 2 },
-                                { week: 8, task: '战前动员：锁定首批高意向客户，准备签约', leads: 25, measurements: 8, visits: 4, signings: 2 }
-                            ]},
-                            { name: `${startMonth + 2}月 - 旺季启动期`, season: 'high', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[3]/10000).toFixed(0) : '0', weeks: [
-                                { week: 9, task: '首战打响：全力转化前期蓄客，确保开门红', leads: 35, measurements: 12, visits: 6, signings: 3 },
-                                { week: 10, task: '旺季攻势：广告预算拉满，全员投入谈单', leads: 40, measurements: 14, visits: 7, signings: 4 },
-                                { week: 11, task: '持续攻坚：周中复盘，周末冲刺，不留遗憾', leads: 35, measurements: 12, visits: 6, signings: 3 },
-                                { week: 12, task: '月度收官：追赶目标，完成首月高峰指标', leads: 30, measurements: 10, visits: 5, signings: 2 }
-                            ]}
-                        ]
-                    },
-                    q2: {
-                        name: '第二季度',
-                        target: targetData.quarterlyTargets ? (targetData.quarterlyTargets[2]/10000).toFixed(0) : '0',
-                        months: [
-                            { name: `${startMonth + 3}月 - 装修黄金期`, season: 'high', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[4]/10000).toFixed(0) : '0', weeks: [
-                                { week: 13, task: '全面总攻：流量顶峰，全员停休，全力签约', leads: 45, measurements: 16, visits: 8, signings: 4 },
-                                { week: 14, task: '高点维持：保持高压态势，消化海量线索', leads: 45, measurements: 16, visits: 8, signings: 4 },
-                                { week: 15, task: '中期复盘：优化流程，解决瓶颈，提升人效', leads: 40, measurements: 14, visits: 7, signings: 3 },
-                                { week: 16, task: '巩固战果：确保本月成为全年业绩最高峰', leads: 40, measurements: 14, visits: 7, signings: 3 }
-                            ]},
-                            { name: `${startMonth + 4}月 - 劳动节促销期`, season: 'high', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[5]/10000).toFixed(0) : '0', weeks: [
-                                { week: 17, task: '假期攻坚：利用小长假，做专场促销活动', leads: 35, measurements: 12, visits: 6, signings: 3 },
-                                { week: 18, task: '平稳过渡：消化假期线索，防止业绩断崖', leads: 35, measurements: 12, visits: 6, signings: 3 },
-                                { week: 19, task: '深度挖掘：跟进所有意向客户，提高转化', leads: 30, measurements: 10, visits: 5, signings: 2 },
-                                { week: 20, task: '半程冲刺：为完成半年度目标做最后努力', leads: 30, measurements: 10, visits: 5, signings: 2 }
-                            ]},
-                            { name: `${startMonth + 5}月 - 半年度收官期`, season: 'medium', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[6]/10000).toFixed(0) : '0', weeks: [
-                                { week: 21, task: '承上启下：总结上半年，部署暑期战役', leads: 30, measurements: 10, visits: 5, signings: 2 },
-                                { week: 22, task: '应对淡季：调整内容策略，转向"夏季装修"话题', leads: 25, measurements: 8, visits: 4, signings: 2 },
-                                { week: 23, task: '暑期蓄客：开始为9-10月旺季储备潜在客户', leads: 25, measurements: 8, visits: 4, signings: 1 },
-                                { week: 24, task: '半年度复盘：全面复盘数据，优化下半年策略', leads: 20, measurements: 6, visits: 3, signings: 1 }
-                            ]}
-                        ]
-                    },
-                    q3: {
-                        name: '第三季度',
-                        target: targetData.quarterlyTargets ? (targetData.quarterlyTargets[3]/10000).toFixed(0) : '0',
-                        months: [
-                            { name: `${startMonth + 6}月 - 暑期淡季应对期`, season: 'low', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[7]/10000).toFixed(0) : '0', weeks: [
-                                { week: 25, task: '暑期调整：团队休整，技能培训，优化流程', leads: 20, measurements: 6, visits: 3, signings: 1 },
-                                { week: 26, task: '内容深耕：制作"夏季装修注意事项"系列内容', leads: 20, measurements: 6, visits: 3, signings: 1 },
-                                { week: 27, task: '客户维系：回访老客户，转介绍活动', leads: 20, measurements: 6, visits: 3, signings: 1 },
-                                { week: 28, task: '系统优化：CRM系统升级，提升客户管理效率', leads: 15, measurements: 4, visits: 2, signings: 0 }
-                            ]},
-                            { name: `${startMonth + 7}月 - 秋季旺季准备期`, season: 'medium', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[8]/10000).toFixed(0) : '0', weeks: [
-                                { week: 29, task: '旺季预热：启动秋季装修季预热活动', leads: 25, measurements: 8, visits: 4, signings: 2 },
-                                { week: 30, task: '渠道拓展：与物业、房产中介建立合作关系', leads: 25, measurements: 8, visits: 4, signings: 2 },
-                                { week: 31, task: '团队动员：秋季战役动员，明确目标与激励政策', leads: 30, measurements: 10, visits: 5, signings: 2 },
-                                { week: 32, task: '资源准备：确保材料、施工队等资源到位', leads: 30, measurements: 10, visits: 5, signings: 2 }
-                            ]},
-                            { name: `${startMonth + 8}月 - 秋季旺季启动期`, season: 'high', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[9]/10000).toFixed(0) : '0', weeks: [
-                                { week: 33, task: '旺季启动：秋季装修季正式启动，加大投放', leads: 35, measurements: 12, visits: 6, signings: 3 },
-                                { week: 34, task: '集中转化：全力转化前期蓄客，确保开门红', leads: 35, measurements: 12, visits: 6, signings: 3 },
-                                { week: 35, task: '持续攻坚：保持高强度转化，不留遗憾', leads: 35, measurements: 12, visits: 6, signings: 3 },
-                                { week: 36, task: '月度收官：追赶目标，完成本月高峰指标', leads: 30, measurements: 10, visits: 5, signings: 2 }
-                            ]}
-                        ]
-                    },
-                    q4: {
-                        name: '第四季度',
-                        target: targetData.quarterlyTargets ? (targetData.quarterlyTargets[4]/10000).toFixed(0) : '0',
-                        months: [
-                            { name: `${startMonth + 9}月 - 秋季旺季延续期`, season: 'high', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[10]/10000).toFixed(0) : '0', weeks: [
-                                { week: 37, task: '旺季延续：保持投放力度，继续收割市场', leads: 35, measurements: 12, visits: 6, signings: 3 },
-                                { week: 38, task: '国庆促销：策划国庆黄金周促销活动', leads: 40, measurements: 14, visits: 7, signings: 4 },
-                                { week: 39, task: '假期攻坚：利用国庆假期，做专场促销', leads: 40, measurements: 14, visits: 7, signings: 4 },
-                                { week: 40, task: '平稳过渡：消化假期线索，防止业绩断崖', leads: 35, measurements: 12, visits: 6, signings: 3 }
-                            ]},
-                            { name: `${startMonth + 10}月 - 年终冲刺期`, season: 'medium', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[11]/10000).toFixed(0) : '0', weeks: [
-                                { week: 41, task: '年终冲刺：为完成年度目标做最后努力', leads: 30, measurements: 10, visits: 5, signings: 2 },
-                                { week: 42, task: '深度挖掘：跟进所有意向客户，提高转化', leads: 30, measurements: 10, visits: 5, signings: 2 },
-                                { week: 43, task: '目标追赶：针对缺口，制定专项追赶计划', leads: 25, measurements: 8, visits: 4, signings: 2 },
-                                { week: 44, task: '收官准备：准备年度总结，规划明年战略', leads: 25, measurements: 8, visits: 4, signings: 2 }
-                            ]},
-                            { name: `${startMonth + 11}月 - 年度收官期`, season: 'low', monthlyTarget: targetData.monthlyTargets ? (targetData.monthlyTargets[12]/10000).toFixed(0) : '0', weeks: [
-                                { week: 45, task: '年度收官：完成年度最后一批签约', leads: 20, measurements: 6, visits: 3, signings: 1 },
-                                { week: 46, task: '年度复盘：全面复盘全年数据与经验', leads: 15, measurements: 4, visits: 2, signings: 0 },
-                                { week: 47, task: '明年规划：制定明年战略目标与计划', leads: 10, measurements: 2, visits: 1, signings: 0 },
-                                { week: 48, task: '团队建设：年终团建，激励团队士气', leads: 5, measurements: 0, visits: 0, signings: 0 }
-                            ]}
-                        ]
-                    }
-                };
-                
-                const quarterData = quarters[quarter];
+                const quarterData = getQuarterData(quarter);
                 
                 // 计算每周的目标产值
                 const calculatedWeeks = calculateQuarterlyWeeklyTargets(quarterData);
@@ -2070,15 +2219,24 @@
                                     <tbody>`;
                     
                     month.weeks.forEach((week, weekIndex) => {
+                        // 获取动态计算的目标
+                        const weeklyTarget = weeklyTargets[weekIndex];
+                        const targets = calculateTargets(
+                            weeklyTarget * 10000, // 转换为元
+                            targetData.unitPrice || 300000,
+                            targetData.conversionRate || 22,
+                            targetData.visitRate || 40
+                        );
+                        
                         warRoomHTML += `
                                         <tr class="season-${month.season}">
                                             <td>第${week.week}周</td>
                                             <td><strong>${week.task}</strong></td>
-                                            <td>${week.leads}</td>
-                                            <td>${week.measurements}</td>
-                                            <td>${week.visits}</td>
-                                            <td>${week.signings}</td>
-                                            <td>${weeklyTargets[weekIndex]}</td>
+                                            <td>${targets.leadTarget}</td>
+                                            <td>${targets.measurementTarget}</td>
+                                            <td>${targets.visitTarget}</td>
+                                            <td>${targets.signingTarget}</td>
+                                            <td>${weeklyTarget}</td>
                                         </tr>`;
                     });
                     
@@ -2148,12 +2306,17 @@
                 const weeklyTargets = [];
                 
                 quarterData.months.forEach(month => {
-                    const monthlyTarget = parseFloat(month.monthlyTarget);
+                    // 确保monthlyTarget是有效的数字
+                    const monthlyTarget = parseFloat(month.monthlyTarget) || 0;
                     const seasonType = month.season; // 'high', 'medium', 'low'
                     
                     // 使用工具函数计算每周的目标产值
                     const monthWeeklyTargets = utils.calculateWeeklyTargets(monthlyTarget, seasonType);
                     weeklyTargets.push(monthWeeklyTargets);
+                    
+                    // 为月份对象添加周目标和月度目标，供后续使用
+                    month.weeklyTargets = monthWeeklyTargets;
+                    month.monthlyTarget = monthlyTarget;
                 });
                 
                 return weeklyTargets;
